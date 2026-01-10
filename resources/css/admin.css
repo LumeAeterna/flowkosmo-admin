@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Admin Panel Base Styles */
+@layer base {
+    html {
+        @apply bg-admin-bg text-white;
+    }
+
+    body {
+        font-family: 'Inter', system-ui, sans-serif;
+        @apply antialiased min-h-screen;
+    }
+}
+
+@layer components {
+    .admin-card {
+        @apply bg-admin-surface border border-admin-border rounded-xl;
+    }
+
+    .stat-card {
+        @apply admin-card p-4;
+    }
+
+    .nav-link {
+        @apply flex items-center gap-3 px-3 py-2.5 text-admin-muted hover:text-white hover:bg-white/5 rounded-lg transition-colors font-medium;
+    }
+
+    .nav-link.active {
+        @apply text-white bg-admin-accent/20;
+    }
+
+    .admin-input {
+        @apply w-full px-4 py-2.5 bg-admin-bg border border-admin-border rounded-lg text-white placeholder-admin-muted focus:outline-none focus:ring-2 focus:ring-admin-accent focus:border-transparent transition-all;
+    }
+
+    .action-btn {
+        @apply flex items-center justify-center gap-2 p-4 bg-admin-bg border border-admin-border rounded-lg text-admin-muted hover:text-white hover:border-admin-accent/50 transition-all cursor-pointer;
+    }
+}
