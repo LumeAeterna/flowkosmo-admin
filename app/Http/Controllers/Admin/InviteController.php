@@ -39,6 +39,8 @@ class InviteController extends Controller
      */
     public function store(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('Invite creation started', $request->all());
+
         $validated = $request->validate([
             'code' => 'nullable|string|min:4|max:20|alpha_dash|unique:invitations,code',
             'email' => 'nullable|email|max:255',
@@ -66,6 +68,15 @@ class InviteController extends Controller
                 : null,
             'created_by' => $request->user()->id,
         ]);
+
+        // Send email if address provided
+        if (!empty($validated['email'])) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($validated['email'])->send(new \App\Mail\InviteCreated($invitation));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send invite email: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'message' => 'Invite code generated successfully',
