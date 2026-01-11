@@ -40,7 +40,7 @@ class InviteController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'nullable|string|min:4|max:20|alpha_num|unique:invitations,code',
+            'code' => 'nullable|string|min:4|max:20|alpha_dash|unique:invitations,code',
             'email' => 'nullable|email|max:255',
             'expires_in_days' => 'nullable|integer|min:1|max:365',
         ]);

@@ -94,16 +94,19 @@ onMounted(fetchInvites);
                 <table class="min-w-full divide-y divide-obsidian-border">
                     <thead class="bg-black/20">
                         <tr>
-                            <th class="px-6 py-4 text-left text-xs font-mono text-gray-500 uppercase tracking-wider">Access Token</th>
-                            <th class="px-6 py-4 text-left text-xs font-mono text-gray-500 uppercase tracking-wider">Assigned Identity</th>
+                            <th class="px-6 py-4 text-left text-xs font-mono text-gray-500 uppercase tracking-wider">Access Token (Click to Copy)</th>
+                            <th class="px-6 py-4 text-left text-xs font-mono text-gray-500 uppercase tracking-wider">Recipient Email</th>
                             <th class="px-6 py-4 text-left text-xs font-mono text-gray-500 uppercase tracking-wider">State</th>
                             <th class="px-6 py-4 text-right text-xs font-mono text-gray-500 uppercase tracking-wider">Protocol</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-obsidian-border bg-obsidian-surface/50">
                         <tr v-for="invite in invites" :key="invite.id" class="hover:bg-white/5 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <code class="text-sm font-mono text-neon-cyan">{{ invite.code }}</code>
+                            <td class="px-6 py-4 whitespace-nowrap group cursor-pointer" @click="copyCode(invite.code)">
+                                <code class="text-sm font-mono text-neon-cyan group-hover:text-neon-green transition-colors flex items-center gap-2">
+                                    {{ invite.code }}
+                                    <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                </code>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                                 {{ invite.email || '—' }}
@@ -145,7 +148,7 @@ onMounted(fetchInvites);
                     <div>
                         <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Custom Code (Optional)</label>
                         <input v-model="newInvite.code" type="text" class="input-dark" placeholder="e.g. VIP2025 (Leave empty for random)">
-                        <p class="text-xs text-gray-600 mt-1 font-mono">4-20 chars, letters/numbers</p>
+                        <p class="text-xs text-gray-600 mt-1 font-mono">4-20 chars, letters, numbers, dashes & underscores</p>
                     </div>
                     <div>
                         <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Recipient Email (Optional)</label>

@@ -31,6 +31,20 @@ const toggleSuspend = async (tenant) => {
     }
 };
 
+const deleteTenant = async (tenant) => {
+    if (!confirm(`ARE YOU SURE? This will PERMANENTLY DELETE ${tenant.name} and all associated data. This action cannot be undone.`)) return;
+    
+    // Double confirmation for safety
+    if (!confirm(`Please confirm again: DELETE ${tenant.name}?`)) return;
+
+    try {
+        await axios.delete(`/api/tenants/${tenant.id}`);
+        tenants.value = tenants.value.filter(t => t.id !== tenant.id);
+    } catch (e) {
+        alert('Failed to delete tenant');
+    }
+};
+
 onMounted(fetchTenants);
 </script>
 
@@ -93,8 +107,11 @@ onMounted(fetchTenants);
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-mono">
                                 <Link :href="`/tenants/${tenant.id}`" class="text-neon-cyan hover:text-white mr-4 transition-colors">>> VIEW</Link>
-                                <button @click="toggleSuspend(tenant)" class="text-gray-500 hover:text-white transition-colors">
+                                <button @click="toggleSuspend(tenant)" class="text-gray-500 hover:text-white mr-4 transition-colors">
                                     {{ tenant.is_suspended ? '[ACTIVATE]' : '[SUSPEND]' }}
+                                </button>
+                                <button @click="deleteTenant(tenant)" class="text-red-600 hover:text-red-400 transition-colors">
+                                    [DELETE]
                                 </button>
                             </td>
                         </tr>

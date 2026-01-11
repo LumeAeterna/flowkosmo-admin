@@ -111,12 +111,9 @@ class TenantController extends Controller
      */
     public function destroy(Tenant $tenant)
     {
-        // For safety, we just suspend instead of deleting
-        // You can implement soft deletes later if needed
-        $tenant->is_suspended = true;
-        $tenant->suspended_at = now();
-        $tenant->save();
+        // Permanent deletion as requested for removing test tenants
+        $tenant->delete();
 
-        return response()->json(['message' => 'Tenant has been suspended']);
+        return response()->json(['message' => 'Tenant has been permanently deleted']);
     }
 }
