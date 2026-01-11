@@ -71,8 +71,8 @@ const logout = () => {
         <!-- Sidebar -->
         <aside class="fixed left-0 top-12 bottom-0 w-64 bg-obsidian-surface/50 backdrop-blur-md border-r border-obsidian-border z-40 flex flex-col">
             <div class="p-6">
-                <div class="mb-8">
-                    <img src="https://i.ibb.co/Q7QkQ477/flowkosmo-1.png" alt="FlowKosmo" class="h-10 w-auto" />
+                <div class="mb-8 flex justify-center">
+                    <img src="https://i.ibb.co/Q7QkQ477/flowkosmo-1.png" alt="FlowKosmo" class="w-full max-w-[200px] h-auto" />
                 </div>
 
                 <nav class="space-y-1">
