@@ -32,10 +32,19 @@ const fetchTenant = async () => {
 const updateTenant = async () => {
     saving.value = true;
     try {
-        await axios.put(`/api/tenants/${props.id}`, form.value);
+        const payload = { ...form.value };
+        // Ensure domain is null if empty to avoid unique constraint violations on empty strings
+        if (!payload.domain) payload.domain = null;
+        
+        await axios.put(`/api/tenants/${props.id}`, payload);
         alert('Client updated successfully');
     } catch (e) {
-        alert('Failed to update client');
+        console.error(e);
+        let msg = 'Failed to update client';
+        if (e.response && e.response.data && e.response.data.message) {
+            msg = e.response.data.message;
+        }
+        alert(msg);
     } finally {
         saving.value = false;
     }
@@ -169,6 +178,7 @@ onMounted(fetchTenant);
                             <div>
                                 <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Custom Domain</label>
                                 <input v-model="form.domain" type="text" class="input-dark" placeholder="e.g. business.com">
+                                <p class="text-[10px] text-gray-500 mt-1 font-mono">Requires A Record point to Server IP</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Service Tier</label>
