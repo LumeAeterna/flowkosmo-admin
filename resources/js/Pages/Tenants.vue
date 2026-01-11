@@ -1,12 +1,41 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 
 const tenants = ref([]);
 const loading = ref(true);
 const search = ref('');
+
+// Create tenant modal
+const showCreateModal = ref(false);
+const creating = ref(false);
+const createForm = ref({
+    name: '',
+    slug: '',
+    domain: '',
+    plan: 'free',
+    admin_name: '',
+    admin_email: '',
+    admin_password: '',
+});
+const createErrors = ref({});
+
+// Auto-generate slug from name
+watch(() => createForm.value.name, (newName) => {
+    if (!createForm.value.slug || createForm.value.slug === slugify(createForm.value.name.slice(0, -1))) {
+        createForm.value.slug = slugify(newName);
+    }
+});
+
+const slugify = (text) => {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+};
 
 const fetchTenants = async () => {
     loading.value = true;
@@ -18,6 +47,43 @@ const fetchTenants = async () => {
         console.error('Failed to fetch tenants:', e);
     } finally {
         loading.value = false;
+    }
+};
+
+const openCreateModal = () => {
+    createForm.value = {
+        name: '',
+        slug: '',
+        domain: '',
+        plan: 'free',
+        admin_name: '',
+        admin_email: '',
+        admin_password: '',
+    };
+    createErrors.value = {};
+    showCreateModal.value = true;
+};
+
+const closeCreateModal = () => {
+    showCreateModal.value = false;
+};
+
+const createTenant = async () => {
+    creating.value = true;
+    createErrors.value = {};
+    
+    try {
+        const response = await axios.post('/api/tenants', createForm.value);
+        tenants.value.unshift(response.data.tenant);
+        closeCreateModal();
+    } catch (e) {
+        if (e.response?.data?.errors) {
+            createErrors.value = e.response.data.errors;
+        } else {
+            alert('Failed to create tenant');
+        }
+    } finally {
+        creating.value = false;
     }
 };
 
@@ -58,15 +124,21 @@ onMounted(fetchTenants);
                     <h2 class="text-3xl font-bold text-white tracking-tight">Tenants Database</h2>
                     <p class="text-gray-500 mt-2">Manage registered business entities.</p>
                 </div>
-                <!-- Search -->
-                <div class="w-64">
-                    <input 
-                        v-model="search" 
-                        @input="fetchTenants" 
-                        type="text" 
-                        placeholder="Search UUID / Name..." 
-                        class="input-dark w-full"
-                    >
+                <div class="flex items-center gap-4">
+                    <!-- Search -->
+                    <div class="w-64">
+                        <input 
+                            v-model="search" 
+                            @input="fetchTenants" 
+                            type="text" 
+                            placeholder="Search UUID / Name..." 
+                            class="input-dark w-full"
+                        >
+                    </div>
+                    <!-- Create Button -->
+                    <button @click="openCreateModal" class="btn-primary">
+                        + CREATE TENANT
+                    </button>
                 </div>
             </div>
 
@@ -127,6 +199,140 @@ onMounted(fetchTenants);
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Create Tenant Modal -->
+        <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <!-- Backdrop -->
+            <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="closeCreateModal"></div>
+            
+            <!-- Modal -->
+            <div class="relative bg-obsidian-surface border border-obsidian-border rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <!-- Header -->
+                <div class="border-b border-obsidian-border px-6 py-4">
+                    <h3 class="text-xl font-bold text-white">Create New Tenant</h3>
+                    <p class="text-sm text-gray-500 mt-1">Set up a new business entity with admin access</p>
+                </div>
+                
+                <!-- Form -->
+                <form @submit.prevent="createTenant" class="p-6 space-y-5">
+                    <!-- Business Info Section -->
+                    <div class="space-y-4">
+                        <div class="text-xs font-mono text-neon-cyan uppercase tracking-wider">Business Information</div>
+                        
+                        <div>
+                            <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Business Name *</label>
+                            <input 
+                                v-model="createForm.name"
+                                type="text" 
+                                required
+                                class="input-dark w-full"
+                                placeholder="Acme Corporation"
+                            >
+                            <p v-if="createErrors.name" class="text-red-500 text-xs mt-1">{{ createErrors.name[0] }}</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-mono text-gray-500 uppercase mb-2">URL Slug</label>
+                            <input 
+                                v-model="createForm.slug"
+                                type="text" 
+                                class="input-dark w-full"
+                                placeholder="acme-corporation"
+                            >
+                            <p class="text-gray-600 text-xs mt-1">Leave blank to auto-generate from name</p>
+                            <p v-if="createErrors.slug" class="text-red-500 text-xs mt-1">{{ createErrors.slug[0] }}</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Custom Domain</label>
+                            <input 
+                                v-model="createForm.domain"
+                                type="text" 
+                                class="input-dark w-full"
+                                placeholder="booking.acme.com"
+                            >
+                            <p v-if="createErrors.domain" class="text-red-500 text-xs mt-1">{{ createErrors.domain[0] }}</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Package *</label>
+                            <select 
+                                v-model="createForm.plan"
+                                required
+                                class="input-dark w-full"
+                            >
+                                <option value="free">Free</option>
+                                <option value="basic">Basic</option>
+                                <option value="pro">Pro</option>
+                                <option value="whitelabel">Whitelabel</option>
+                            </select>
+                            <p v-if="createErrors.plan" class="text-red-500 text-xs mt-1">{{ createErrors.plan[0] }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Admin User Section -->
+                    <div class="space-y-4 pt-4 border-t border-obsidian-border">
+                        <div class="text-xs font-mono text-neon-cyan uppercase tracking-wider">Admin User</div>
+                        
+                        <div>
+                            <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Admin Name *</label>
+                            <input 
+                                v-model="createForm.admin_name"
+                                type="text" 
+                                required
+                                class="input-dark w-full"
+                                placeholder="John Doe"
+                            >
+                            <p v-if="createErrors.admin_name" class="text-red-500 text-xs mt-1">{{ createErrors.admin_name[0] }}</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Admin Email *</label>
+                            <input 
+                                v-model="createForm.admin_email"
+                                type="email" 
+                                required
+                                class="input-dark w-full"
+                                placeholder="admin@acme.com"
+                            >
+                            <p v-if="createErrors.admin_email" class="text-red-500 text-xs mt-1">{{ createErrors.admin_email[0] }}</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Admin Password *</label>
+                            <input 
+                                v-model="createForm.admin_password"
+                                type="password" 
+                                required
+                                minlength="8"
+                                class="input-dark w-full"
+                                placeholder="••••••••"
+                            >
+                            <p class="text-gray-600 text-xs mt-1">Minimum 8 characters</p>
+                            <p v-if="createErrors.admin_password" class="text-red-500 text-xs mt-1">{{ createErrors.admin_password[0] }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex justify-end gap-3 pt-4 border-t border-obsidian-border">
+                        <button 
+                            type="button" 
+                            @click="closeCreateModal" 
+                            class="btn-secondary"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            :disabled="creating"
+                            class="btn-primary"
+                        >
+                            {{ creating ? 'Creating...' : 'Create Tenant' }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </AuthenticatedLayout>

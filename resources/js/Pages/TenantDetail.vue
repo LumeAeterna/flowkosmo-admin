@@ -47,7 +47,80 @@ const impersonate = async (userId) => {
         const response = await axios.post(`/api/impersonate/${userId}`);
         window.location.href = response.data.redirect_to;
     } catch (e) {
-        alert('Connection failed');
+        console.error(e);
+        if (e.response && e.response.data && e.response.data.error) {
+            alert(`Connection failed: ${e.response.data.error}`);
+        } else {
+            alert(`Connection failed: ${e.message}`);
+        }
+    }
+};
+
+const editUserModalOpen = ref(false);
+const editingUser = ref(null);
+const userForm = ref({
+    name: '',
+    email: '',
+    password: ''
+});
+const updatingUser = ref(false);
+
+const openEditUserModal = (user) => {
+    editingUser.value = user;
+    userForm.value = {
+        name: user.name,
+        email: user.email,
+        password: '' // Keep empty unless changing
+    };
+    editUserModalOpen.value = true;
+};
+
+const closeEditUserModal = () => {
+    editUserModalOpen.value = false;
+    editingUser.value = null;
+    userForm.value = { name: '', email: '', password: '' };
+};
+
+const updateUser = async () => {
+    updatingUser.value = true;
+    try {
+        const response = await axios.put(`/api/tenants/${props.id}/users/${editingUser.value.id}`, userForm.value);
+        
+        // Update local state
+        const index = tenant.value.users.findIndex(u => u.id === editingUser.value.id);
+        if (index !== -1) {
+            tenant.value.users[index] = { ...tenant.value.users[index], ...response.data };
+        }
+        
+        closeEditUserModal();
+        alert('User updated successfully');
+    } catch (e) {
+        console.error(e);
+        let msg = 'Failed to update user';
+        if (e.response && e.response.data && e.response.data.message) {
+            msg = e.response.data.message;
+        }
+        alert(msg);
+    } finally {
+        updatingUser.value = false;
+    }
+};
+
+const forceVerify = async (user) => {
+    if (!confirm(`Force verify email for ${user.name}? This will bypass the email confirmation process.`)) return;
+    try {
+        const response = await axios.post(`/api/tenants/${props.id}/users/${user.id}/verify`);
+        
+        // Update local state
+        const index = tenant.value.users.findIndex(u => u.id === user.id);
+        if (index !== -1) {
+            tenant.value.users[index] = { ...tenant.value.users[index], email_verified_at: response.data.user.email_verified_at };
+        }
+        
+        alert('User verified successfully');
+    } catch (e) {
+        console.error(e);
+        alert('Failed to verify user email');
     }
 };
 
@@ -73,7 +146,7 @@ onMounted(fetchTenant);
                     <div class="flex items-center gap-3 text-sm font-mono mt-1">
                         <span class="text-neon-cyan">UUID: {{ tenant?.id }}</span>
                         <span class="text-gray-600">|</span>
-                        <span class="text-gray-400">{{ tenant?.slug }}.flowkosmo.xyz</span>
+                        <span class="text-gray-400">app.flowkosmo.xyz/{{ tenant?.slug }}</span>
                     </div>
                 </div>
             </div>
@@ -137,19 +210,66 @@ onMounted(fetchTenant);
                     <div class="card p-6">
                         <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 border-b border-obsidian-border pb-2">Authorized Accounts</h3>
                         <div class="space-y-2">
-                            <div v-for="user in tenant.users" :key="user.id" class="p-3 bg-black/20 rounded border border-obsidian-border flex items-center justify-between group hover:border-neon-cyan/50 transition-colors">
+                            <div v-for="user in tenant.users" :key="user.id" class="p-4 bg-black/20 rounded border border-obsidian-border flex flex-col gap-4 group hover:border-gray-600 transition-colors">
                                 <div>
                                     <div class="font-medium text-white text-sm">{{ user.name }}</div>
-                                    <div class="text-xs text-gray-600 font-mono">{{ user.email }}</div>
+                                    <div class="text-xs text-gray-500 font-mono mt-1 flex items-center gap-2">
+                                        {{ user.email }}
+                                        <span v-if="user.email_verified_at" class="text-green-500" title="Verified">✓</span>
+                                        <span v-else class="text-red-500 font-bold" title="Unverified">✕</span>
+                                    </div>
                                 </div>
-                                <button @click="impersonate(user.id)" class="text-xs text-neon-cyan opacity-0 group-hover:opacity-100 transition-opacity font-mono hover:underline">
-                                    [CONNECT]
-                                </button>
+                                <div class="flex items-center flex-wrap gap-3 pt-3 border-t border-obsidian-border">
+                                    <button v-if="!user.email_verified_at" @click="forceVerify(user)" class="px-3 py-1.5 rounded bg-yellow-500/10 border border-yellow-500/30 text-[10px] text-yellow-500 hover:bg-yellow-500 hover:text-black font-mono transition-all">
+                                        FORCE VERIFY
+                                    </button>
+                                    <button @click="openEditUserModal(user)" class="px-3 py-1.5 rounded bg-gray-600/20 border border-gray-600/50 text-xs text-gray-400 hover:text-white hover:border-gray-400 font-mono transition-all">
+                                        EDIT
+                                    </button>
+                                    <button @click="impersonate(user.id)" class="px-3 py-1.5 rounded bg-neon-cyan/10 border border-neon-cyan/30 text-xs text-neon-cyan font-bold hover:bg-neon-cyan hover:text-black transition-all">
+                                        CONNECT
+                                    </button>
+                                </div>
                             </div>
                             <p v-if="!tenant.users?.length" class="text-gray-500 text-xs text-center py-4 font-mono">NO ACCOUNTS DETECTED</p>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Edit User Modal -->
+        <div v-if="editUserModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="closeEditUserModal"></div>
+            <div class="relative bg-obsidian-surface border border-obsidian-border rounded-lg shadow-2xl w-full max-w-md">
+                <div class="border-b border-obsidian-border px-6 py-4">
+                    <h3 class="text-lg font-bold text-white">Edit Account</h3>
+                </div>
+                
+                <form @submit.prevent="updateUser" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Name</label>
+                        <input v-model="userForm.name" type="text" required class="input-dark w-full">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-mono text-gray-500 uppercase mb-2">Email</label>
+                        <input v-model="userForm.email" type="email" required class="input-dark w-full">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-mono text-gray-500 uppercase mb-2">New Password</label>
+                        <input v-model="userForm.password" type="password" class="input-dark w-full" placeholder="Leave blank to keep current">
+                        <p class="text-[10px] text-gray-600 mt-1">Min 8 characters if changing</p>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t border-obsidian-border">
+                        <button type="button" @click="closeEditUserModal" class="btn-secondary">Cancel</button>
+                        <button type="submit" :disabled="updatingUser" class="btn-primary">
+                            {{ updatingUser ? 'Saving...' : 'Save Changes' }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </AuthenticatedLayout>

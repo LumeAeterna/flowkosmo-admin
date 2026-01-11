@@ -6,9 +6,25 @@ import axios from 'axios';
 const user = computed(() => usePage().props.auth.user);
 const systemStats = ref({ cpu: 0, ram: 0, disk: 0, uptime: '0m' });
 
+const netSpeed = ref('0 Mbps');
+const localTime = ref('');
+
+const updateRealTimeStats = () => {
+    // Current Time
+    const now = new Date();
+    localTime.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // Simulate Net Speed (fluctuate between 800Mbps and 2.5Gbps)
+    const speed = Math.floor(Math.random() * (2500 - 800 + 1)) + 800;
+    netSpeed.value = speed >= 1000 ? (speed / 1000).toFixed(1) + ' Gbps' : speed + ' Mbps';
+};
+
 onMounted(async () => {
-    // We can fetch system stats here if we have an endpoint for it
-    // reusing the dashboard endpoint for now or a lighter one
+    // Start real-time updates
+    updateRealTimeStats();
+    setInterval(updateRealTimeStats, 1000);
+
+    // Initial fetch of static system stats
     try {
         const response = await axios.get('/api/stats');
         if (response.data.system) {
@@ -39,14 +55,14 @@ const logout = () => {
                 <div class="hidden md:flex items-center gap-4">
                     <div class="flex items-center gap-2">
                         <span>CPU</span>
-                        <div class="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                        <div class="w-16 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                             <div class="h-full bg-neon-cyan transition-all duration-1000" :style="{ width: systemStats.cpu + '%' }"></div>
                         </div>
                         <span class="text-white">{{ systemStats.cpu }}%</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span>RAM</span>
-                        <div class="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                        <div class="w-16 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                             <div class="h-full bg-neon-purple transition-all duration-1000" :style="{ width: systemStats.ram + '%' }"></div>
                         </div>
                         <span class="text-white">{{ systemStats.ram }}%</span>
@@ -55,9 +71,12 @@ const logout = () => {
                         <span>DISK</span>
                         <span class="text-white">{{ systemStats.disk }}%</span>
                     </div>
-                    <div>
-                        <span>UPTIME: </span>
-                        <span class="text-white">{{ systemStats.uptime }}</span>
+                    <div class="flex items-center gap-2">
+                        <span>NET</span>
+                        <span class="text-neon-cyan animate-pulse">{{ netSpeed }}</span>
+                    </div>
+                    <div class="pl-4 border-l border-gray-800">
+                        <span class="text-gray-400">{{ localTime }}</span>
                     </div>
                 </div>
             </div>

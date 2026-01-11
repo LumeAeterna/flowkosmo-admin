@@ -4,10 +4,63 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class TenantController extends Controller
 {
+    /**
+     * Create a new tenant with initial admin user.
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:100|unique:tenants,slug',
+            'domain' => 'nullable|string|max:255|unique:tenants,domain',
+            'plan' => 'required|in:free,basic,pro,whitelabel',
+            'admin_name' => 'required|string|max:255',
+            'admin_email' => 'required|email|unique:users,email',
+            'admin_password' => 'required|string|min:8',
+        ]);
+
+        // Generate slug from name if not provided
+        $slug = $validated['slug'] ?? Str::slug($validated['name']);
+        
+        // Ensure slug is unique
+        $originalSlug = $slug;
+        $counter = 1;
+        while (Tenant::where('slug', $slug)->exists()) {
+            $slug = $originalSlug . '-' . $counter++;
+        }
+
+        // Create tenant
+        $tenant = Tenant::create([
+            'name' => $validated['name'],
+            'slug' => $slug,
+            'domain' => $validated['domain'] ?? null,
+            'plan' => $validated['plan'],
+            'is_suspended' => false,
+        ]);
+
+        // Create admin user for this tenant
+        $user = User::create([
+            'tenant_id' => $tenant->id,
+            'name' => $validated['admin_name'],
+            'email' => $validated['admin_email'],
+            'password' => Hash::make($validated['admin_password']),
+            'role' => 'admin',
+        ]);
+
+        return response()->json([
+            'message' => 'Tenant created successfully',
+            'tenant' => $tenant,
+            'admin_user' => $user,
+        ], 201);
+    }
+
     /**
      * List all tenants with pagination and search.
      */
@@ -52,7 +105,7 @@ class TenantController extends Controller
         $tenant->load(['users' => function ($q) {
             // Only load admin/staff users, not customers (customers should not be impersonated)
             $q->where('role', '!=', 'customer')
-              ->select('id', 'tenant_id', 'name', 'email', 'role', 'created_at');
+              ->select('id', 'tenant_id', 'name', 'email', 'role', 'created_at', 'email_verified_at');
         }]);
         
         $tenant->loadCount(['bookings', 'services']);
@@ -71,6 +124,22 @@ class TenantController extends Controller
             'tenant' => $tenant,
             'stats' => $stats,
         ]);
+    }
+
+    /**
+     * Force verify a user's email.
+     */
+    public function verifyUserEmail(Request $request, Tenant $tenant, User $user)
+    {
+        // Ensure user belongs to tenant
+        if ($user->tenant_id !== $tenant->id) {
+            return response()->json(['error' => 'User does not belong to this tenant'], 404);
+        }
+
+        $user->email_verified_at = now();
+        $user->save();
+
+        return response()->json(['message' => 'Email verified successfully', 'user' => $user]);
     }
 
     /**
@@ -104,6 +173,34 @@ class TenantController extends Controller
             'message' => $tenant->is_suspended ? 'Tenant suspended' : 'Tenant reactivated',
             'tenant' => $tenant,
         ]);
+    }
+
+    /**
+     * Update a specific user within a tenant.
+     */
+    public function updateUser(Request $request, Tenant $tenant, User $user)
+    {
+        // Ensure user belongs to tenant
+        if ($user->tenant_id !== $tenant->id) {
+            return response()->json(['error' => 'User does not belong to this tenant'], 404);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:8',
+        ]);
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        $user->save();
+
+        return response()->json($user);
     }
 
     /**

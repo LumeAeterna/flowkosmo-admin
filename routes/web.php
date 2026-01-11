@@ -9,8 +9,8 @@ Route::get('/', function () {
     return redirect('/dashboard');
 });
 
-// Dashboard (requires auth + super admin)
-Route::middleware(['auth', 'super_admin'])->group(function () {
+// Dashboard (requires auth + super admin + verified email)
+Route::middleware(['auth', 'super_admin', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
@@ -21,9 +21,12 @@ Route::middleware(['auth', 'super_admin'])->group(function () {
         
         // Tenants
         Route::get('/tenants', [Admin\TenantController::class, 'index']);
+        Route::post('/tenants', [Admin\TenantController::class, 'store']);
         Route::get('/tenants/{tenant}', [Admin\TenantController::class, 'show']);
         Route::put('/tenants/{tenant}', [Admin\TenantController::class, 'update']);
         Route::post('/tenants/{tenant}/suspend', [Admin\TenantController::class, 'suspend']);
+        Route::put('/tenants/{tenant}/users/{user}', [Admin\TenantController::class, 'updateUser']);
+        Route::post('/tenants/{tenant}/users/{user}/verify', [Admin\TenantController::class, 'verifyUserEmail']);
         Route::delete('/tenants/{tenant}', [Admin\TenantController::class, 'destroy']);
         
         // Invites
@@ -57,6 +60,20 @@ Route::middleware(['auth', 'super_admin'])->group(function () {
     Route::get('/profile', function () {
         return Inertia::render('Profile/Edit');
     })->name('profile.edit');
+});
+
+// Tenant routes (auth required, but not super_admin)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/{tenant:slug}/dashboard', function (App\Models\Tenant $tenant) {
+        // Authorization check: User must belong to tenant OR be super admin
+        if (request()->user()->tenant_id !== $tenant->id && !request()->user()->is_super_admin) {
+            abort(403, 'Unauthorized access to this tenant.');
+        }
+        
+        return Inertia::render('TenantDashboard', [
+            'tenant' => $tenant
+        ]);
+    })->name('tenant.dashboard');
 });
 
 require __DIR__.'/auth.php';

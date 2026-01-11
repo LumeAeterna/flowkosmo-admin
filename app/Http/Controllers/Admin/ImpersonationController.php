@@ -37,10 +37,13 @@ class ImpersonationController extends Controller
         // Login as the target user
         Auth::login($user);
 
+        $baseUrl = config('app.main_url');
+        $redirectUrl = $user->tenant ? "{$baseUrl}/{$user->tenant->slug}/dashboard" : "{$baseUrl}/dashboard";
+
         return response()->json([
             'message' => "Now impersonating {$user->name}",
             'user' => $user->only(['id', 'name', 'email', 'tenant_id']),
-            'redirect_to' => $user->tenant ? "/{$user->tenant->slug}/dashboard" : '/dashboard',
+            'redirect_to' => $redirectUrl,
         ]);
     }
 
