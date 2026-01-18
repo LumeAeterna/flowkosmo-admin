@@ -36,11 +36,19 @@ const stats = ref({
     total_users: 0,
     total_bookings: 0,
     pending_invites: 0,
-    plans: { free: 0, pro: 0, whitelabel: 0 },
-    // system stats are handled by layout now, but API still returns them
+    plans: { free: 0, basic: 0, pro: 0, whitelabel: 0 },
+    revenue: {
+        mrr: 0,
+        monthly_revenue: 0,
+        total_revenue: 0,
+        outstanding: 0,
+        overdue: 0,
+        active_subscriptions: 0,
+    },
     charts: {
         tenants_growth: { labels: [], data: [] },
-        bookings_activity: { labels: [], data: [] }
+        bookings_activity: { labels: [], data: [] },
+        revenue_trend: { labels: [], data: [] }
     }
 });
 const loading = ref(true);
@@ -153,25 +161,24 @@ onMounted(async () => {
                     <div class="text-gray-500 text-xs font-mono uppercase mb-1">Total Clients</div>
                     <div class="text-3xl font-bold text-white tracking-tighter">{{ stats.total_tenants }}</div>
                     <div class="mt-2 text-xs text-neon-cyan flex items-center gap-1">
-                        <span>▲</span> 12% from last month
+                        <span>▲</span> Active: {{ stats.active_tenants }}
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="text-gray-500 text-xs font-mono uppercase mb-1">Active Subscriptions</div>
-                    <div class="text-3xl font-bold text-white tracking-tighter">{{ stats.active_tenants }}</div>
-                    <div class="w-full bg-gray-800 h-1 mt-3 rounded-full overflow-hidden">
-                        <div class="bg-neon-green h-full" :style="{ width: (stats.active_tenants / stats.total_tenants * 100) + '%' }"></div>
-                    </div>
+                    <div class="text-gray-500 text-xs font-mono uppercase mb-1">Monthly Revenue</div>
+                    <div class="text-3xl font-bold text-neon-green tracking-tighter">${{ stats.revenue?.mrr?.toLocaleString() || 0 }}</div>
+                    <div class="mt-2 text-xs text-gray-500 font-mono">MRR</div>
                 </div>
                 <div class="stat-card">
-                    <div class="text-gray-500 text-xs font-mono uppercase mb-1">Pending Invites</div>
-                    <div class="text-3xl font-bold text-white tracking-tighter">{{ stats.pending_invites }}</div>
-                    <div class="mt-2 text-xs text-yellow-500 font-mono">AWAITING ACTIVATION</div>
+                    <div class="text-gray-500 text-xs font-mono uppercase mb-1">This Month</div>
+                    <div class="text-3xl font-bold text-white tracking-tighter">${{ stats.revenue?.monthly_revenue?.toLocaleString() || 0 }}</div>
+                    <div class="mt-2 text-xs text-neon-cyan font-mono">COLLECTED</div>
                 </div>
                 <div class="stat-card">
-                    <div class="text-gray-500 text-xs font-mono uppercase mb-1">Total Bookings</div>
-                    <div class="text-3xl font-bold text-white tracking-tighter">{{ stats.total_bookings }}</div>
-                    <div class="mt-2 text-xs text-neon-purple font-mono">PLATFORM WIDE</div>
+                    <div class="text-gray-500 text-xs font-mono uppercase mb-1">Outstanding</div>
+                    <div class="text-3xl font-bold text-white tracking-tighter">${{ stats.revenue?.outstanding?.toLocaleString() || 0 }}</div>
+                    <div v-if="stats.revenue?.overdue > 0" class="mt-2 text-xs text-red-500 font-mono">OVERDUE: ${{ stats.revenue?.overdue }}</div>
+                    <div v-else class="mt-2 text-xs text-green-500 font-mono">ALL CURRENT</div>
                 </div>
             </div>
 

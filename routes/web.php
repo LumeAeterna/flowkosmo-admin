@@ -34,8 +34,25 @@ Route::middleware(['auth', 'super_admin', 'verified'])->group(function () {
         Route::post('/invites', [Admin\InviteController::class, 'store']);
         Route::delete('/invites/{invitation}', [Admin\InviteController::class, 'destroy']);
         
-        // Subscriptions
+        // Subscriptions (legacy)
         Route::put('/subscriptions/{tenant}', [Admin\SubscriptionController::class, 'update']);
+        
+        // Square Billing
+        Route::get('/billing/status', [Admin\SquareController::class, 'status']);
+        Route::get('/billing/overview', [Admin\SquareController::class, 'overview']);
+        Route::get('/billing/tenant/{tenant}', [Admin\SquareController::class, 'tenantBilling']);
+        Route::post('/billing/tenant/{tenant}/subscription', [Admin\SquareController::class, 'createSubscription']);
+        Route::delete('/billing/tenant/{tenant}/subscription', [Admin\SquareController::class, 'cancelSubscription']);
+        Route::post('/billing/tenant/{tenant}/invoice', [Admin\SquareController::class, 'createInvoice']);
+        Route::post('/billing/tenant/{tenant}/payment', [Admin\SquareController::class, 'recordPayment']);
+        
+        // Announcements
+        Route::get('/announcements', [Admin\AnnouncementController::class, 'index']);
+        Route::post('/announcements', [Admin\AnnouncementController::class, 'store']);
+        Route::get('/announcements/{announcement}', [Admin\AnnouncementController::class, 'show']);
+        Route::put('/announcements/{announcement}', [Admin\AnnouncementController::class, 'update']);
+        Route::delete('/announcements/{announcement}', [Admin\AnnouncementController::class, 'destroy']);
+        Route::post('/announcements/{announcement}/toggle', [Admin\AnnouncementController::class, 'toggle']);
         
         // Impersonation
         Route::post('/impersonate/{user}', [Admin\ImpersonationController::class, 'start']);
@@ -55,6 +72,10 @@ Route::middleware(['auth', 'super_admin', 'verified'])->group(function () {
     Route::get('/invites', function () {
         return Inertia::render('Invites');
     })->name('invites');
+    
+    Route::get('/announcements', function () {
+        return Inertia::render('Announcements');
+    })->name('announcements');
 
     // Profile (required by Breeze layout)
     Route::get('/profile', function () {

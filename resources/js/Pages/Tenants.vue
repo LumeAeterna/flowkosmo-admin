@@ -7,6 +7,12 @@ import axios from 'axios';
 const tenants = ref([]);
 const loading = ref(true);
 const search = ref('');
+const pagination = ref({
+    current_page: 1,
+    last_page: 1,
+    per_page: 20,
+    total: 0,
+});
 
 // Create tenant modal
 const showCreateModal = ref(false);
@@ -37,16 +43,31 @@ const slugify = (text) => {
         .replace(/^-+|-+$/g, '');
 };
 
-const fetchTenants = async () => {
+const fetchTenants = async (page = 1) => {
     loading.value = true;
     try {
-        const params = search.value ? `?search=${search.value}` : '';
+        let params = `?page=${page}`;
+        if (search.value) params += `&search=${search.value}`;
         const response = await axios.get(`/api/tenants${params}`);
         tenants.value = response.data.data || response.data;
+        if (response.data.current_page) {
+            pagination.value = {
+                current_page: response.data.current_page,
+                last_page: response.data.last_page,
+                per_page: response.data.per_page,
+                total: response.data.total,
+            };
+        }
     } catch (e) {
         console.error('Failed to fetch tenants:', e);
     } finally {
         loading.value = false;
+    }
+};
+
+const goToPage = (page) => {
+    if (page >= 1 && page <= pagination.value.last_page) {
+        fetchTenants(page);
     }
 };
 
@@ -199,6 +220,34 @@ onMounted(fetchTenants);
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="pagination.last_page > 1" class="flex items-center justify-between px-4 py-3 card">
+                <div class="text-sm text-gray-500 font-mono">
+                    Showing {{ (pagination.current_page - 1) * pagination.per_page + 1 }} - 
+                    {{ Math.min(pagination.current_page * pagination.per_page, pagination.total) }} 
+                    of {{ pagination.total }} tenants
+                </div>
+                <div class="flex items-center gap-2">
+                    <button 
+                        @click="goToPage(pagination.current_page - 1)" 
+                        :disabled="pagination.current_page === 1"
+                        class="px-3 py-1 text-sm font-mono border border-obsidian-border rounded hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                        PREV
+                    </button>
+                    <span class="text-sm font-mono text-gray-400">
+                        Page {{ pagination.current_page }} of {{ pagination.last_page }}
+                    </span>
+                    <button 
+                        @click="goToPage(pagination.current_page + 1)" 
+                        :disabled="pagination.current_page === pagination.last_page"
+                        class="px-3 py-1 text-sm font-mono border border-obsidian-border rounded hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                        NEXT
+                    </button>
+                </div>
             </div>
         </div>
 

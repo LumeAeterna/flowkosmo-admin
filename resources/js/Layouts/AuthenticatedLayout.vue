@@ -107,6 +107,10 @@ const logout = () => {
                         <span class="nav-indicator"></span>
                         Access Codes
                     </Link>
+                    <Link href="/announcements" class="nav-item" :class="{ 'active': $page.url.startsWith('/announcements') }">
+                        <span class="nav-indicator"></span>
+                        Announcements
+                    </Link>
                     <a href="#" class="nav-item opacity-50 cursor-not-allowed">
                         <span class="nav-indicator"></span>
                         Server Logs
